@@ -1,1 +1,1 @@
-# neat_surviving_school_game
+# Implementing NEAT algorithm on "Surviving School" Game
