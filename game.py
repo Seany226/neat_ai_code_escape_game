@@ -11,6 +11,7 @@ SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 450 
 FPS = 60
 
+
 # Colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -20,11 +21,14 @@ GREEN = (50, 200, 50)
 
 # Screen and Clock
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Surviving School!")
+pygame.display.set_caption("Code Escape!")
 clock = pygame.time.Clock()
 
 # Fonts
 font = pygame.font.Font(None, 36)
+
+GAME_SCREEN = pygame.image.load("game_screen.jpg").convert()
+GAME_SCREEN = pygame.transform.scale(GAME_SCREEN, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
 # Player Class
 class Student(pygame.sprite.Sprite):
@@ -44,7 +48,7 @@ class Student(pygame.sprite.Sprite):
         # Jump
         if keys[pygame.K_SPACE] and not self.is_jumping:
             self.is_jumping = True
-            self.velocity = -25  # Influences jump height
+            self.velocity = -22  # Influences jump height
 
         # Fast downward motion when ducking mid-air
         if keys[pygame.K_DOWN]:
@@ -143,14 +147,16 @@ def main():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
-
+            screen.fill(WHITE)
+            
+            screen.blit(GAME_SCREEN, (0,0))
             # Update
             all_sprites.update()
             obstacles.update()
 
             # Spawn Obstacles
             obstacle_timer += 1
-            if len(obstacles.sprites()) <= 2 and obstacle_timer >= 30:
+            if len(obstacles.sprites()) <= 2 and random.randint(0, 100) < 10 and obstacle_timer > 30:
                 obstacle_type = random.choice(["homework", "locker", "backpack"])
                 obstacle = Obstacle(obstacle_type)
                 all_sprites.add(obstacle)
@@ -166,13 +172,11 @@ def main():
             high_score = max(high_score, score)
 
             # Draw Everything
-            screen.fill(WHITE)
+            
             all_sprites.draw(screen)
-            score_text = font.render(f"Score: {score}", True, BLACK)
-            high_score_text = font.render(f"High Score: {high_score}", True, BLACK)
-            screen.blit(score_text, (10, 10))
-            screen.blit(high_score_text, (10, 40))
-
+            text_to_screen(f"Score {score}", BLACK, 10, 10, 36)
+            text_to_screen(f"High Score: {high_score}", BLACK, 550, 10, 36)
+            
             pygame.display.flip()
             clock.tick(FPS)
 
