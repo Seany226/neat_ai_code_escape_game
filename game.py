@@ -8,7 +8,7 @@ pygame.init()
 
 # Constants
 SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 400 
+SCREEN_HEIGHT = 450 
 FPS = 60
 
 # Colors
@@ -29,14 +29,13 @@ font = pygame.font.Font(None, 36)
 # Player Class
 class Student(pygame.sprite.Sprite):
     def __init__(self):
-        super().__init__()
-        self.image = pygame.Surface((50, 50))
+        super().__init__() # Inherit the parent class properties 
+        self.image = pygame.Surface((25, 50))
         self.image.fill(BLUE)
         self.rect = self.image.get_rect()
-        self.rect.x = 100
+        self.rect.x = SCREEN_WIDTH // 8
         self.rect.y = SCREEN_HEIGHT - 100
         self.is_jumping = False
-        self.is_ducking = False
         self.velocity = 0
 
     def update(self):
@@ -45,21 +44,12 @@ class Student(pygame.sprite.Sprite):
         # Jump
         if keys[pygame.K_SPACE] and not self.is_jumping:
             self.is_jumping = True
-            self.velocity = -20  # Higher jump to cover 2/3 of screen height
+            self.velocity = -25  # Influences jump height
 
         # Fast downward motion when ducking mid-air
         if keys[pygame.K_DOWN]:
             if self.is_jumping:
                 self.velocity += 5
-            else:
-                self.is_ducking = True
-                self.image = pygame.Surface((50, 25))
-                self.image.fill(BLUE)
-                self.rect.height = 25
-        else:
-            self.is_ducking = False
-            self.image = pygame.Surface((50, 50))
-            self.image.fill(BLUE)
 
         # Apply gravity
         if self.is_jumping:
@@ -93,30 +83,24 @@ class Obstacle(pygame.sprite.Sprite):
         self.rect.x = SCREEN_WIDTH
 
     def update(self):
-        self.rect.x -= 8 + score // 100  # Speed increases as score increases
+        self.rect.x -= (SCREEN_WIDTH // 2 + score) // 100  # Speed increases as score increases
         if self.rect.x < -self.rect.width:
             self.kill()
-
-# Function for Start Screen
-def draw_button(text, color, rect):
-    pygame.draw.rect(screen, color, rect)
-    text_surf = font.render(text, True, WHITE)
-    text_rect = text_surf.get_rect(center=rect.center)
-    screen.blit(text_surf, text_rect)
+        
+def text_to_screen(txt, colour, x, y, font_size):
+    font = pygame.font.SysFont("arial", font_size)
+    screen.blit(font.render(txt,True,colour),[x,y])
 
 def start_screen(high_score, last_score):
     while True:
-        screen.fill(WHITE)
-        title_text = font.render("Surviving School", True, BLACK)
-        high_score_text = font.render(f"High Score: {high_score}", True, BLACK)
-        last_score_text = font.render(f"Last Score: {last_score}", True, BLACK)
-
-        screen.blit(title_text, (SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 - 150))
-        screen.blit(high_score_text, (SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 - 100))
-        screen.blit(last_score_text, (SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 - 50))
-
-        play_button = pygame.Rect(SCREEN_WIDTH // 2 - 75, SCREEN_HEIGHT // 2, 150, 50)
-        draw_button("PLAY", GREEN, play_button)
+        # Displaying the Background Image of the Start Screen
+        bg = pygame.image.load("start_screen.jpg")
+        bg = pygame.transform.scale(bg, (SCREEN_WIDTH, SCREEN_HEIGHT))
+        screen.blit(bg, (0,0))
+        
+        #Displaying the High Score and Previous Score
+        text_to_screen(f"{high_score}", WHITE, 330, 335, 30)
+        text_to_screen(f"{last_score}", WHITE, 590, 335, 30)
 
         pygame.display.flip()
 
@@ -124,8 +108,12 @@ def start_screen(high_score, last_score):
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if play_button.collidepoint(event.pos):
+
+            if event.type == pygame.MOUSEBUTTONUP:
+                x, y = pygame.mouse.get_pos()
+    
+                # Check if user pressed play_button
+                if 330 <= x and x <= 470 and 250 <= y and y <= 310:
                     return
 
 # Main Game Loop
@@ -162,7 +150,7 @@ def main():
 
             # Spawn Obstacles
             obstacle_timer += 1
-            if obstacle_timer > 60:
+            if len(obstacles.sprites()) <= 2 and obstacle_timer >= 30:
                 obstacle_type = random.choice(["homework", "locker", "backpack"])
                 obstacle = Obstacle(obstacle_type)
                 all_sprites.add(obstacle)
