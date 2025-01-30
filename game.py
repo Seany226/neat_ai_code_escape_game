@@ -35,11 +35,11 @@ class Student(pygame.sprite.Sprite):
         super().__init__() # Inherit the parent class properties 
 
         # Player Image
-        self.image = pygame.image.load("coding_boy.png")
+        self.image = pygame.image.load("coding_boy.png").convert_alpha()
         self.image = pygame.transform.scale(self.image, (40, 80))
         self.rect = self.image.get_rect()
         self.rect.x = SCREEN_WIDTH // 8
-        self.rect.y = SCREEN_HEIGHT - 130
+        self.rect.y = SCREEN_HEIGHT - 127
 
         # Jumping Variables
         self.is_jumping = False
@@ -62,8 +62,8 @@ class Student(pygame.sprite.Sprite):
         if self.is_jumping:
             self.velocity += 1
             self.rect.y += self.velocity
-            if self.rect.y >= SCREEN_HEIGHT - 130:
-                self.rect.y = SCREEN_HEIGHT - 130
+            if self.rect.y >= SCREEN_HEIGHT - 127:
+                self.rect.y = SCREEN_HEIGHT - 127
                 self.is_jumping = False
                 self.velocity = 0
 
@@ -72,21 +72,21 @@ class Obstacle(pygame.sprite.Sprite):
     def __init__(self, type):
         super().__init__()
         self.type = type
-        if type == "homework":
-            self.image = pygame.Surface((30, 30))
-            self.image.fill(RED)
+        if type == "smallvirus":
+            self.image = pygame.image.load("virus.png").convert_alpha()
+            self.image = pygame.transform.scale(self.image, (55, 45))
             self.rect = self.image.get_rect()
             self.rect.y = SCREEN_HEIGHT - 100
-        elif type == "locker":
-            self.image = pygame.Surface((30, 75))
-            self.image.fill(RED)
+        elif type == "bigvirus":
+            self.image = pygame.image.load("virus.png").convert_alpha()
+            self.image = pygame.transform.scale(self.image, (70, 60))
+            self.rect = self.image.get_rect()
+            self.rect.y = SCREEN_HEIGHT - random.randint(110,150)
+        elif type == "cloud_error":
+            self.image = pygame.image.load("cloud_error.png").convert_alpha()
+            self.image = pygame.transform.scale(self.image, (100, 50))
             self.rect = self.image.get_rect()
             self.rect.y = SCREEN_HEIGHT - 250
-        elif type == "backpack":
-            self.image = pygame.Surface((40, 40))
-            self.image.fill(RED)
-            self.rect = self.image.get_rect()
-            self.rect.y = SCREEN_HEIGHT - 100
         self.rect.x = SCREEN_WIDTH
 
     def update(self):
@@ -159,8 +159,8 @@ def main():
 
             # Spawn Obstacles
             obstacle_timer += 1
-            if len(obstacles.sprites()) <= 2 and random.randint(0, 100) < 10 and obstacle_timer > 30:
-                obstacle_type = random.choice(["homework", "locker", "backpack"])
+            if len(obstacles.sprites()) <= 2 and random.randint(0, 100) < 10 and obstacle_timer > 20:
+                obstacle_type = random.choice(["smallvirus", "bigvirus", "cloud_error"])
                 obstacle = Obstacle(obstacle_type)
                 all_sprites.add(obstacle)
                 obstacles.add(obstacle)
