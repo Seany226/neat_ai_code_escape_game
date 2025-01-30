@@ -11,7 +11,6 @@ SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 450 
 FPS = 60
 
-
 # Colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -34,11 +33,15 @@ GAME_SCREEN = pygame.transform.scale(GAME_SCREEN, (SCREEN_WIDTH, SCREEN_HEIGHT))
 class Student(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__() # Inherit the parent class properties 
-        self.image = pygame.Surface((25, 50))
-        self.image.fill(BLUE)
+
+        # Player Image
+        self.image = pygame.image.load("coding_boy.png")
+        self.image = pygame.transform.scale(self.image, (40, 80))
         self.rect = self.image.get_rect()
         self.rect.x = SCREEN_WIDTH // 8
-        self.rect.y = SCREEN_HEIGHT - 100
+        self.rect.y = SCREEN_HEIGHT - 130
+
+        # Jumping Variables
         self.is_jumping = False
         self.velocity = 0
 
@@ -59,8 +62,8 @@ class Student(pygame.sprite.Sprite):
         if self.is_jumping:
             self.velocity += 1
             self.rect.y += self.velocity
-            if self.rect.y >= SCREEN_HEIGHT - 100:
-                self.rect.y = SCREEN_HEIGHT - 100
+            if self.rect.y >= SCREEN_HEIGHT - 130:
+                self.rect.y = SCREEN_HEIGHT - 130
                 self.is_jumping = False
                 self.velocity = 0
 
@@ -78,7 +81,7 @@ class Obstacle(pygame.sprite.Sprite):
             self.image = pygame.Surface((30, 75))
             self.image.fill(RED)
             self.rect = self.image.get_rect()
-            self.rect.y = SCREEN_HEIGHT - 175
+            self.rect.y = SCREEN_HEIGHT - 250
         elif type == "backpack":
             self.image = pygame.Surface((40, 40))
             self.image.fill(RED)
