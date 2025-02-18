@@ -2,6 +2,8 @@
 import pygame
 import random
 import sys
+import neat
+import os
 
 # Initialize Pygame
 pygame.init()
@@ -122,7 +124,7 @@ def start_screen(high_score, last_score):
                 # Check if user pressed play_button
                 if 330 <= x and x <= 470 and 250 <= y and y <= 310:
                     return
-
+'''
 # Main Game Loop
 def main():
     global score
@@ -159,7 +161,7 @@ def main():
 
             # Spawn Obstacles
             obstacle_timer += 1
-            if len(obstacles.sprites()) <= 2 and random.randint(0, 100) < 10 and obstacle_timer > 20:
+            if len(obstacles.sprites()) < 2 and random.randint(0, 100) < 5 and obstacle_timer > 25:
                 obstacle_type = random.choice(["smallvirus", "bigvirus", "cloud_error"])
                 obstacle = Obstacle(obstacle_type)
                 all_sprites.add(obstacle)
@@ -177,14 +179,141 @@ def main():
             # Draw Everything
             
             all_sprites.draw(screen)
-            text_to_screen(f"Score {score}", BLACK, 10, 10, 36)
-            text_to_screen(f"High Score: {high_score}", BLACK, 550, 10, 36)
+            text_to_screen(f"Score {score}", WHITE, 10, 10, 36)
+            text_to_screen(f"High Score: {high_score}", WHITE, 550, 10, 36)
             
             pygame.display.flip()
             clock.tick(FPS)
 
         last_score = score
         score = 0
+'''
+def eval_genomes(genomes, config):
+    screen.fill(WHITE)
+    screen.blit(GAME_SCREEN, (0,0))
+    
+    nets = []
+    students = []
+    ge = []
+
+    global score
+    score = 0
+    high_score = 0
+
+    # Sprite Groups
+    all_sprites = pygame.sprite.Group()
+    obstacles = pygame.sprite.Group()
+
+    # Obstacle Timer
+    obstacle_timer = 0
+    running = True
+        
+
+    for genome_id, genome in genomes:
+        genome.fitness = 0  # start with fitness level of 0
+        net = neat.nn.FeedForwardNetwork.create(genome, config)
+        nets.append(net)
+        students.append(Student())
+        ge.append(genome)
+        all_sprites.add(students[-1])
+
+
+
+    while running and len(students) > 0:
+    
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+                pygame.quit()
+                quit()
+                break
+        
+        screen.fill(WHITE)
+        screen.blit(GAME_SCREEN, (0,0))
+
+       
+
+        # Spawn Obstacles
+        obstacle_timer += 1
+        if len(obstacles.sprites()) < 2 and random.randint(0, 100) < 5 and obstacle_timer > 25:
+            obstacle_type = random.choice(["smallvirus", "bigvirus", "cloud_error"])
+            obstacle = Obstacle(obstacle_type)
+            all_sprites.add(obstacle)
+            obstacles.add(obstacle)
+            obstacle_timer = 0
+            for genome in ge:
+                genome.fitness += 2
+
+        # Scoring
+        score += 1
+        high_score = max(high_score, score)
+
+    
+       
+       
+        for x, player in enumerate(students):  # give each bird a fitness of 0.1 for each frame it stays alive
+            ge[x].fitness += 0.1
+            # player.move()
+            if obstacles:
+                obstacle = obstacles.sprites()[0]
+                inputs = (player.rect.y, obstacle.rect.y - player.rect.y, obstacle.rect.x - player.rect.x)
+            else:
+                inputs = (SCREEN_HEIGHT, player.velocity, SCREEN_WIDTH)
+            output = nets[students.index(player)].activate(inputs)
+
+            # tanh activation is used function so result will be between -1 and 1            
+            if output[0] > 0.5 and player.is_jumping == False:
+                player.is_jumping = True
+                player.velocity = -22
+            if output[1] > 0.5 and player.is_jumping == True:
+                player.velocity += 5
+
+        
+        # check for collision
+        for player in students:
+            # Collision Detection
+            if pygame.sprite.spritecollide(player, obstacles, False):
+                
+                ge[students.index(player)].fitness -= 1
+                nets.pop(students.index(player))
+                ge.pop(students.index(player))
+                students.pop(students.index(player))
+                all_sprites.remove(player)
+         # Update
+        all_sprites.update()
+        obstacles.update()
+
+        all_sprites.draw(screen)
+        text_to_screen(f"Score {score}", WHITE, 10, 10, 36)
+        text_to_screen(f"High Score: {high_score}", WHITE, 550, 10, 36)
+
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+def run_game(config_path):
+    config = neat.config.Config(neat.DefaultGenome, neat.DefaultReproduction, neat.DefaultSpeciesSet, neat.DefaultStagnation, config_path)
+
+    # Create the population, which is the top-level object for a NEAT run.
+    p = neat.Population(config)
+
+    # Add a stdout reporter to show progress in the terminal.
+    p.add_reporter(neat.StdOutReporter(True))
+    stats = neat.StatisticsReporter()
+    p.add_reporter(stats)
+    # p.add_reporter(neat.Checkpointer(5))
+
+    # Run for up to 50 generations.
+    winner = p.run(eval_genomes, 50)
+
+    # show final stats
+    print('\nBest genome:\n{!s}'.format(winner))
 
 if __name__ == "__main__":
+    local_dir = os.path.dirname(__file__)
+    config_path = os.path.join(local_dir, 'neat-config.txt')
+    run_game(config_path)
+'''
+if __name__ == "__main__":
     main()
+'''
