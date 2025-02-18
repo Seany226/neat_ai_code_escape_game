@@ -4,6 +4,7 @@ import random
 import sys
 import neat
 import os
+import pickle
 
 # Initialize Pygame
 pygame.init()
@@ -92,7 +93,8 @@ class Obstacle(pygame.sprite.Sprite):
         self.rect.x = SCREEN_WIDTH
 
     def update(self):
-        self.rect.x -= (SCREEN_WIDTH // 2 + score) // 100  # Speed increases as score increases
+        #self.rect.x -= (SCREEN_WIDTH // 2 + score) // 100  # Speed increases as score increases
+        self.rect.x -= 3
         if self.rect.x < -self.rect.width:
             self.kill()
         
@@ -197,6 +199,7 @@ def eval_genomes(genomes, config):
     ge = []
 
     global score
+    global high_score
     score = 0
     high_score = 0
 
@@ -235,8 +238,9 @@ def eval_genomes(genomes, config):
 
         # Spawn Obstacles
         obstacle_timer += 1
-        if len(obstacles.sprites()) < 2 and random.randint(0, 100) < 5 and obstacle_timer > 25:
+        if len(obstacles.sprites()) < 2 and random.randint(0, 100) < 5 and obstacle_timer > 40:
             obstacle_type = random.choice(["smallvirus", "bigvirus", "cloud_error"])
+            #obstacle_type = random.choice(["smallvirus", "cloud_error"]) # Remove bigvirus to see if the AI can learn better
             obstacle = Obstacle(obstacle_type)
             all_sprites.add(obstacle)
             obstacles.add(obstacle)
@@ -256,16 +260,16 @@ def eval_genomes(genomes, config):
             # player.move()
             if obstacles:
                 obstacle = obstacles.sprites()[0]
-                inputs = (player.rect.y, obstacle.rect.y - player.rect.y, obstacle.rect.x - player.rect.x)
+                inputs = (player.rect.y, player.velocity, obstacle.rect.y - player.rect.y, obstacle.rect.x - player.rect.x)
             else:
-                inputs = (SCREEN_HEIGHT, player.velocity, SCREEN_WIDTH)
+                inputs = (player.rect.y, player.velocity, SCREEN_HEIGHT, SCREEN_WIDTH)
             output = nets[students.index(player)].activate(inputs)
 
             # tanh activation is used function so result will be between -1 and 1            
-            if output[0] > 0.5 and player.is_jumping == False:
+            if output[0] > 0.75 and player.is_jumping == False:
                 player.is_jumping = True
                 player.velocity = -22
-            if output[1] > 0.5 and player.is_jumping == True:
+            if output[1] > 0.75 and player.is_jumping == True:
                 player.velocity += 5
 
         
@@ -274,7 +278,7 @@ def eval_genomes(genomes, config):
             # Collision Detection
             if pygame.sprite.spritecollide(player, obstacles, False):
                 
-                ge[students.index(player)].fitness -= 1
+                ge[students.index(player)].fitness -= 20
                 nets.pop(students.index(player))
                 ge.pop(students.index(player))
                 students.pop(students.index(player))
@@ -284,11 +288,14 @@ def eval_genomes(genomes, config):
         obstacles.update()
 
         all_sprites.draw(screen)
-        text_to_screen(f"Score {score}", WHITE, 10, 10, 36)
+        text_to_screen(f"Score: {score}", WHITE, 10, 10, 36)
         text_to_screen(f"High Score: {high_score}", WHITE, 550, 10, 36)
 
         pygame.display.flip()
         clock.tick(FPS)
+        if score > 10000:
+            pickle.dump(nets[0],open("best.pickle", "wb"))
+            break
 
 
 def run_game(config_path):
@@ -302,9 +309,9 @@ def run_game(config_path):
     stats = neat.StatisticsReporter()
     p.add_reporter(stats)
     # p.add_reporter(neat.Checkpointer(5))
-
+    
     # Run for up to 50 generations.
-    winner = p.run(eval_genomes, 50)
+    winner = p.run(eval_genomes, 100)
 
     # show final stats
     print('\nBest genome:\n{!s}'.format(winner))
