@@ -29,7 +29,7 @@ clock = pygame.time.Clock()
 # Fonts
 font = pygame.font.Font(None, 36)
 
-GAME_SCREEN = pygame.image.load("game_screen.jpg").convert()
+GAME_SCREEN = pygame.image.load(os.path.join("assets","game_screen.jpg")).convert()
 GAME_SCREEN = pygame.transform.scale(GAME_SCREEN, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
 # Player Class
@@ -38,7 +38,7 @@ class Student(pygame.sprite.Sprite):
         super().__init__() # Inherit the parent class properties 
 
         # Player Image
-        self.image = pygame.image.load("coding_boy.png").convert_alpha()
+        self.image = pygame.image.load(os.path.join("assets","coding_boy.png")).convert_alpha()
         self.image = pygame.transform.scale(self.image, (40, 80))
         self.rect = self.image.get_rect()
         self.rect.x = SCREEN_WIDTH // 8
@@ -52,7 +52,7 @@ class Student(pygame.sprite.Sprite):
         keys = pygame.key.get_pressed()
 
         # Jump
-        if keys[pygame.K_SPACE] and not self.is_jumping:
+        if (keys[pygame.K_SPACE] or keys[pygame.K_UP]) and not self.is_jumping:
             self.is_jumping = True
             self.velocity = -22  # Influences jump height
 
@@ -72,32 +72,37 @@ class Student(pygame.sprite.Sprite):
 
 # Obstacle Class
 class Obstacle(pygame.sprite.Sprite):
-    def __init__(self, type):
+    def __init__(self, type, player_type):
         super().__init__()
         self.type = type
+        self.player_type = player_type
         if type == "smallvirus":
-            self.image = pygame.image.load("virus.png").convert_alpha()
+            self.image = pygame.image.load(os.path.join("assets","virus.png")).convert_alpha()
             self.image = pygame.transform.scale(self.image, (55, 45))
             self.rect = self.image.get_rect()
-            self.rect.y = SCREEN_HEIGHT - random.randint(100,150)
+            self.rect.y = SCREEN_HEIGHT - random.randint(100,125)
         elif type == "bigvirus":
-            self.image = pygame.image.load("virus.png").convert_alpha()
+            self.image = pygame.image.load(os.path.join("assets","virus.png")).convert_alpha()
             self.image = pygame.transform.scale(self.image, (70, 60))
             self.rect = self.image.get_rect()
             self.rect.y = SCREEN_HEIGHT - random.randint(110,150)
         elif type == "cloud_error":
-            self.image = pygame.image.load("cloud_error.png").convert_alpha()
+            self.image = pygame.image.load((os.path.join("assets","cloud_error.png"))).convert_alpha()
             self.image = pygame.transform.scale(self.image, (100, 50))
             self.rect = self.image.get_rect()
             self.rect.y = SCREEN_HEIGHT - random.randint(275,350)
         self.rect.x = SCREEN_WIDTH
 
     def update(self):
-        #self.rect.x -= (SCREEN_WIDTH // 2 + score) // 100  # Speed increases as score increases
-        self.rect.x -= 3
-        if self.rect.x < -self.rect.width:
-            self.kill()
+        if self.player_type == "ai":
+            self.rect.x -= 3
+        else:
+            self.rect.x -= min(3 + score // 300, 9)  # Speed increases as score increases
         
+        if self.rect.x < -self.rect.width:
+            self.kill() # Remove the obstacle if it goes off screen
+
+# Function to display text on the screen        
 def text_to_screen(txt, colour, x, y, font_size):
     font = pygame.font.SysFont("arial", font_size)
     screen.blit(font.render(txt,True,colour),[x,y])
@@ -105,13 +110,13 @@ def text_to_screen(txt, colour, x, y, font_size):
 def start_screen(high_score, last_score):
     while True:
         # Displaying the Background Image of the Start Screen
-        bg = pygame.image.load("start_screen.jpg")
+        bg = pygame.image.load((os.path.join("assets","start_screen.jpg")))
         bg = pygame.transform.scale(bg, (SCREEN_WIDTH, SCREEN_HEIGHT))
         screen.blit(bg, (0,0))
         
         #Displaying the High Score and Previous Score
-        text_to_screen(f"{high_score}", WHITE, 330, 335, 30)
-        text_to_screen(f"{last_score}", WHITE, 590, 335, 30)
+        text_to_screen(f"{last_score}", WHITE, 330, 335, 30)
+        text_to_screen(f"{high_score}", WHITE, 590, 335, 30)
 
         pygame.display.flip()
 
@@ -125,71 +130,63 @@ def start_screen(high_score, last_score):
     
                 # Check if user pressed play_button
                 if 330 <= x and x <= 470 and 250 <= y and y <= 310:
-                    return
-'''
-# Main Game Loop
-def main():
+                    return "game"
+                
+                if 495 <= x and x <= 650 and 250 <= y and y <= 310:
+                    return "ai"
+
+def game(high_score):
+    # Sprite Groups
+    all_sprites = pygame.sprite.Group()
+    obstacles = pygame.sprite.Group()
+
+    # Player Instance
+    player = Student()
+    all_sprites.add(player)
+
     global score
     score = 0
-    high_score = 0
-    last_score = 0
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+        screen.fill(WHITE)
+        
+        screen.blit(GAME_SCREEN, (0,0))
+        # Update
+        all_sprites.update()
+        obstacles.update()
 
-    while True:
-        start_screen(high_score, last_score)
+        # Spawn Obstacles
+        
+        if len(obstacles.sprites()) == 0 or (random.randint(0, 100) < 5 and obstacles.sprites()[-1].rect.x < 0.7 * SCREEN_WIDTH):
+            obstacle_type = random.choice(["smallvirus", "bigvirus", "cloud_error"])
+            obstacle = Obstacle(obstacle_type, "human")
+            all_sprites.add(obstacle)
+            obstacles.add(obstacle)
 
-        # Sprite Groups
-        all_sprites = pygame.sprite.Group()
-        obstacles = pygame.sprite.Group()
+        # Collision Detection
+        if pygame.sprite.spritecollide(player, obstacles, False):
+            running = False
 
-        # Player Instance
-        player = Student()
-        all_sprites.add(player)
+        # Scoring
+        score += 1
+        high_score = max(high_score, score)
 
-        # Obstacle Timer
-        obstacle_timer = 0
-        running = True
+        # Draw Everything
+        
+        all_sprites.draw(screen)
+        text_to_screen(f"Score: {score}", WHITE, 10, 10, 36)
+        text_to_screen(f"High Score: {high_score}", WHITE, 550, 10, 36)
+        
+        pygame.display.flip()
+        clock.tick(FPS)
 
-        while running:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
-            screen.fill(WHITE)
-            
-            screen.blit(GAME_SCREEN, (0,0))
-            # Update
-            all_sprites.update()
-            obstacles.update()
+    return score
 
-            # Spawn Obstacles
-            obstacle_timer += 1
-            if len(obstacles.sprites()) < 2 and random.randint(0, 100) < 5 and obstacle_timer > 25:
-                obstacle_type = random.choice(["smallvirus", "bigvirus", "cloud_error"])
-                obstacle = Obstacle(obstacle_type)
-                all_sprites.add(obstacle)
-                obstacles.add(obstacle)
-                obstacle_timer = 0
 
-            # Collision Detection
-            if pygame.sprite.spritecollide(player, obstacles, False):
-                running = False
-
-            # Scoring
-            score += 1
-            high_score = max(high_score, score)
-
-            # Draw Everything
-            
-            all_sprites.draw(screen)
-            text_to_screen(f"Score {score}", WHITE, 10, 10, 36)
-            text_to_screen(f"High Score: {high_score}", WHITE, 550, 10, 36)
-            
-            pygame.display.flip()
-            clock.tick(FPS)
-
-        last_score = score
-        score = 0
-'''
 def eval_genomes(genomes, config):
     screen.fill(WHITE)
     screen.blit(GAME_SCREEN, (0,0))
@@ -232,23 +229,22 @@ def eval_genomes(genomes, config):
         screen.fill(WHITE)
         screen.blit(GAME_SCREEN, (0,0))
 
-       
+        fitness_type = "cloud_error"
 
         # Spawn Obstacles
         obstacle_timer += 1
         if len(obstacles.sprites()) < 2 and random.randint(0, 100) < 5 and obstacle_timer > 50:
-            # obstacle_type = random.choice(["smallvirus", "bigvirus", "cloud_error"])
-            obstacle_type = random.choice(["smallvirus", "cloud_error"]) # Remove bigvirus to see if the AI can learn better
-            obstacle = Obstacle(obstacle_type)
+            obstacle_type = random.choice(["smallvirus", "cloud_error"]) # Remove bigvirus to simplify game for AI
+            obstacle = Obstacle(obstacle_type, "ai")
             all_sprites.add(obstacle)
             obstacles.add(obstacle)
             obstacle_timer = 0
             for genome in ge:
-                
-                if obstacle_type == "smallvirus":
-                    genome.fitness += 5
+                if obstacle_type != fitness_type:
+                    genome.fitness += 2
+                    fitness_type = obstacle_type
                 else:
-                    genome.fitness += 3
+                    genome.fitness += 0.5
 
         # Scoring
         score += 1
@@ -259,7 +255,7 @@ def eval_genomes(genomes, config):
             if obstacles:
                 obstacle = obstacles.sprites()[0]
                 # inputs = (player.rect.y, player.velocity, obstacle.rect.y - player.rect.y, obstacle.rect.x - player.rect.x) # without normalization
-                
+            
                 # Normalize inputs
                 norm_player_y = player.rect.y / SCREEN_HEIGHT
                 if player.velocity == 0:
@@ -284,15 +280,17 @@ def eval_genomes(genomes, config):
             if output[0] > 0.75 and player.is_jumping == False:
                 player.is_jumping = True
                 player.velocity = -22
+            
             if output[1] > 0.75 and player.is_jumping == True:
                 player.velocity += 5
+               
 
         # check for collision
         for player in students:
             # Collision Detection
             if pygame.sprite.spritecollide(player, obstacles, False):
                 
-                ge[students.index(player)].fitness -= 10
+                ge[students.index(player)].fitness -= 5
                 nets.pop(students.index(player))
                 ge.pop(students.index(player))
                 students.pop(students.index(player))
@@ -309,6 +307,7 @@ def eval_genomes(genomes, config):
         clock.tick(FPS)
         if score > 10000:
             pickle.dump(nets[0],open("best.pickle", "wb"))
+            running = False
             break
 
 
@@ -324,17 +323,29 @@ def run_game(config_path):
     p.add_reporter(stats)
     # p.add_reporter(neat.Checkpointer(5))
 
-    # Run for up to 50 generations.
+    # Run for up to 100 generations.
     winner = p.run(eval_genomes, 100)
 
     # show final stats
     print('\nBest genome:\n{!s}'.format(winner))
 
+    return
+
+# Main Game Loop
+def main(config_path):
+    high_score = 0
+    last_score = 0
+
+    while True:
+        game_state = start_screen(high_score, last_score)
+        
+        if game_state == "game":
+            last_score = game(high_score)
+            high_score = max(high_score, last_score)
+        elif game_state == "ai":
+            run_game(config_path)
+
 if __name__ == "__main__":
     local_dir = os.path.dirname(__file__)
     config_path = os.path.join(local_dir, 'neat-config.txt')
-    run_game(config_path)
-'''
-if __name__ == "__main__":
-    main()
-'''
+    main(config_path)
