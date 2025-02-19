@@ -79,7 +79,7 @@ class Obstacle(pygame.sprite.Sprite):
             self.image = pygame.image.load("virus.png").convert_alpha()
             self.image = pygame.transform.scale(self.image, (55, 45))
             self.rect = self.image.get_rect()
-            self.rect.y = SCREEN_HEIGHT - 100
+            self.rect.y = SCREEN_HEIGHT - random.randint(100,150)
         elif type == "bigvirus":
             self.image = pygame.image.load("virus.png").convert_alpha()
             self.image = pygame.transform.scale(self.image, (70, 60))
@@ -89,7 +89,7 @@ class Obstacle(pygame.sprite.Sprite):
             self.image = pygame.image.load("cloud_error.png").convert_alpha()
             self.image = pygame.transform.scale(self.image, (100, 50))
             self.rect = self.image.get_rect()
-            self.rect.y = SCREEN_HEIGHT - 250
+            self.rect.y = SCREEN_HEIGHT - random.randint(275,350)
         self.rect.x = SCREEN_WIDTH
 
     def update(self):
@@ -199,9 +199,7 @@ def eval_genomes(genomes, config):
     ge = []
 
     global score
-    global high_score
     score = 0
-    high_score = 0
 
     # Sprite Groups
     all_sprites = pygame.sprite.Group()
@@ -238,31 +236,48 @@ def eval_genomes(genomes, config):
 
         # Spawn Obstacles
         obstacle_timer += 1
-        if len(obstacles.sprites()) < 2 and random.randint(0, 100) < 5 and obstacle_timer > 40:
-            obstacle_type = random.choice(["smallvirus", "bigvirus", "cloud_error"])
-            #obstacle_type = random.choice(["smallvirus", "cloud_error"]) # Remove bigvirus to see if the AI can learn better
+        if len(obstacles.sprites()) < 2 and random.randint(0, 100) < 5 and obstacle_timer > 50:
+            # obstacle_type = random.choice(["smallvirus", "bigvirus", "cloud_error"])
+            obstacle_type = random.choice(["smallvirus", "cloud_error"]) # Remove bigvirus to see if the AI can learn better
             obstacle = Obstacle(obstacle_type)
             all_sprites.add(obstacle)
             obstacles.add(obstacle)
             obstacle_timer = 0
             for genome in ge:
-                genome.fitness += 2
+                
+                if obstacle_type == "smallvirus":
+                    genome.fitness += 5
+                else:
+                    genome.fitness += 3
 
         # Scoring
         score += 1
-        high_score = max(high_score, score)
-
-    
        
-       
-        for x, player in enumerate(students):  # give each bird a fitness of 0.1 for each frame it stays alive
+        for x, player in enumerate(students):  # Give each student a fitness of 0.1 for each frame it stays alive
             ge[x].fitness += 0.1
-            # player.move()
+            
             if obstacles:
                 obstacle = obstacles.sprites()[0]
-                inputs = (player.rect.y, player.velocity, obstacle.rect.y - player.rect.y, obstacle.rect.x - player.rect.x)
+                # inputs = (player.rect.y, player.velocity, obstacle.rect.y - player.rect.y, obstacle.rect.x - player.rect.x) # without normalization
+                
+                # Normalize inputs
+                norm_player_y = player.rect.y / SCREEN_HEIGHT
+                if player.velocity == 0:
+                    norm_velocity = 0
+                else:
+                    norm_velocity = player.velocity / abs(player.velocity)
+                norm_obstacle_y = obstacle.rect.y / SCREEN_HEIGHT
+                norm_obstacle_x = (obstacle.rect.x - player.rect.x) / SCREEN_WIDTH
+                inputs = (norm_player_y, norm_velocity, norm_obstacle_y, norm_obstacle_x)
             else:
-                inputs = (player.rect.y, player.velocity, SCREEN_HEIGHT, SCREEN_WIDTH)
+                # inputs = (player.rect.y, player.velocity, SCREEN_HEIGHT, SCREEN_WIDTH) # without normalization
+                norm_player_y = player.rect.y / SCREEN_HEIGHT
+                if player.velocity == 0:
+                    norm_velocity = 0
+                else:
+                    norm_velocity = player.velocity / abs(player.velocity)
+                inputs = (norm_player_y, norm_velocity, 1, 1)  # Normalized values for no obstacle
+                
             output = nets[students.index(player)].activate(inputs)
 
             # tanh activation is used function so result will be between -1 and 1            
@@ -272,13 +287,12 @@ def eval_genomes(genomes, config):
             if output[1] > 0.75 and player.is_jumping == True:
                 player.velocity += 5
 
-        
         # check for collision
         for player in students:
             # Collision Detection
             if pygame.sprite.spritecollide(player, obstacles, False):
                 
-                ge[students.index(player)].fitness -= 20
+                ge[students.index(player)].fitness -= 10
                 nets.pop(students.index(player))
                 ge.pop(students.index(player))
                 students.pop(students.index(player))
@@ -289,7 +303,7 @@ def eval_genomes(genomes, config):
 
         all_sprites.draw(screen)
         text_to_screen(f"Score: {score}", WHITE, 10, 10, 36)
-        text_to_screen(f"High Score: {high_score}", WHITE, 550, 10, 36)
+        text_to_screen(f"Alive: {len(nets)}", WHITE, 650, 10, 36)
 
         pygame.display.flip()
         clock.tick(FPS)
@@ -309,7 +323,7 @@ def run_game(config_path):
     stats = neat.StatisticsReporter()
     p.add_reporter(stats)
     # p.add_reporter(neat.Checkpointer(5))
-    
+
     # Run for up to 50 generations.
     winner = p.run(eval_genomes, 100)
 
